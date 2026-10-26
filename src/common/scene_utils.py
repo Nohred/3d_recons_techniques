@@ -56,7 +56,7 @@ def add_object(stage, model_path: Path):
                 reference_path, root.GetPath()
             )
     stage.Load()
-    for prim in list(stage.Traverse()):
+    for prim in list(stage.TraverseAll()):
         if str(prim.GetPath()).startswith("/Object/") and (
             prim.IsA(UsdGeom.Camera) or prim.HasAPI(UsdLux.LightAPI)
         ):
@@ -75,21 +75,40 @@ def add_object(stage, model_path: Path):
             "floor_z": float(placed.GetMin()[2])}
 
 
-def create_scene(stage, model_path: Path, room_path: Path):
-    from pxr import Sdf, UsdGeom
+def create_scene(stage, model_path: Path, room_path: Path | None = None,
+                 *, distance: float | None = None):
+    from pxr import UsdGeom
 
     UsdGeom.SetStageUpAxis(stage, UsdGeom.Tokens.z)
     UsdGeom.SetStageMetersPerUnit(stage, 1.0)
-    layer_dir = Path(stage.GetRootLayer().realPath).parent
-    room_reference = os.path.relpath(room_path.resolve(), layer_dir)
-    room_prim = stage.DefinePrim("/Room", "Xform")
-    room_prim.GetReferences().AddReference(
-        room_reference, "/Room"
-    )
-    room_prim.CreateAttribute(
-        "capture:roomAsset", Sdf.ValueTypeNames.String
-    ).Set(str(room_path.resolve()))
-    return add_object(stage, model_path)
+    object_info = add_object(stage, model_path)
+    if distance is None:
+        distance = framing_distance(object_info["radius"], 50.0, 1280, 720, 1.2)
+    from src.common.room import create_room
+    object_info["room"] = create_room(
+        stage, distance, object_info["dimensions"], object_info["floor_z"])
+    return object_info
+
+
+def is_runtime_camera_path(path: str) -> bool:
+    """Cámaras que Isaac Sim crea para el viewport, no para la escena."""
+    return path == "/OmniverseKit_Persp" or path.startswith("/Render/")
+
+
+def validate_scene_lighting(stage) -> list[str]:
+    from pxr import UsdLux
+
+    lights = [
+        str(prim.GetPath())
+        for prim in stage.Traverse()
+        if prim.HasAPI(UsdLux.LightAPI) and prim.IsActive()
+    ]
+    if not lights:
+        raise RuntimeError(
+            "La escena no contiene luces activas. Regenera las escenas con "
+            "REBUILD_SCENES=True."
+        )
+    return lights
 
 
 def framing_distance(radius: float, horizontal_fov_deg: float,
@@ -102,14 +121,15 @@ def framing_distance(radius: float, horizontal_fov_deg: float,
 def camera_pose(position: np.ndarray, target: np.ndarray) -> np.ndarray:
     from numpy.linalg import norm
 
-    backward = np.asarray(position, dtype=float) - np.asarray(target, dtype=float)
+    position_copy = np.array(position, dtype=float, copy=True)
+    backward = position_copy - np.asarray(target, dtype=float)
     backward /= norm(backward)
     right = np.cross([0.0, 0.0, 1.0], backward)
     right /= norm(right)
     up = np.cross(backward, right)
     matrix = np.eye(4)
     matrix[:3, :3] = np.column_stack([right, up, backward])
-    matrix[:3, 3] = position
+    matrix[:3, 3] = position_copy
     return matrix
 
 

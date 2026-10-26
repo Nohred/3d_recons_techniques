@@ -31,12 +31,28 @@ def rgbd_output(object_id: str, index: int) -> Path:
     return object_root(object_id) / "raw" / "rgbd" / f"camera_{index:02d}"
 
 
+#def discover_model_files() -> list[Path]:
+#    if not MODELS_ROOT.is_dir():
+#        raise RuntimeError(f"No existe la carpeta de modelos: {MODELS_ROOT}")
+#    return sorted(
+#        path for path in MODELS_ROOT.rglob("*.usdz") if path.is_file()
+#    )
+
+# Debug files detection
+
 def discover_model_files() -> list[Path]:
     if not MODELS_ROOT.is_dir():
         raise RuntimeError(f"No existe la carpeta de modelos: {MODELS_ROOT}")
-    return sorted(
-        path for path in MODELS_ROOT.rglob("*.usdz") if path.is_file()
-    )
+    #path_list = sorted(path for path in MODELS_ROOT.rglob("*.usdz") if path.is_file())
+    # Get all .usdz files in the MODELS_ROOT directory without recursion
+    path_list = sorted(path for path in MODELS_ROOT.glob("*.usdz") if path.is_file())
+
+    #print(f"DEBUG: discover_model_files found {len(path_list)} .usdz files in {MODELS_ROOT}")
+    #print("DEBUG: List of discovered .usdz files:")
+    #for path in path_list:  # Print only the first 10 for brevity
+    #    print(f"DEBUG: {path}")
+    
+    return path_list
 
 
 def discover_object_ids() -> list[str]:

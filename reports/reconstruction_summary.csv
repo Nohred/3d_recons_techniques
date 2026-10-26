@@ -1,0 +1,5 @@
+timestamp,object,stage,status,seconds,detail
+2026-10-26T13:00:28-06:00,cola_can,process,failed,30,"camaras registradas=2 imagenes=240 Registro insuficiente (minimo 90%); no se entrena. "
+2026-10-26T13:28:10-06:00,cola_can,process,failed,98,"camaras registradas=3 imagenes=300 Registro insuficiente (minimo 90%); no se entrena. "
+2026-10-26T14:25:13-06:00,cola_can,process,failed,779,"camaras registradas=2 imagenes=240 Registro insuficiente (minimo 90%); no se entrena. "
+2026-10-26T15:53:33-06:00,cola_can,process,failed,532,"camaras registradas=3 imagenes=240 Registro insuficiente (minimo 90%); no se entrena. "

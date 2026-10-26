@@ -13,14 +13,19 @@ data/<object_id>/
        rgbd/camera_01/{rgb.png,depth.npy}
        rgbd/camera_02/{rgb.png,depth.npy}
 assets/environment/
-├── room.usd
-└── textures/room.png
+├── room.usd                 # legado; ya no se referencia en escenas nuevas
+└── textures/generated_room.png
 ```
 
 `src/capture/generate_orbit_room.py` es el capturador RGB oficial.
 `src/capture/legacy/generate_orbit.py` se conserva solamente como histórico.
 `generate_rgbd_three_cameras.py` produce tres vistas fijas a 120 grados.
-Ningún capturador genera el cuarto ni guarda cámaras en `scene.usd`.
+`prepare_scenes.py` genera el cuarto dentro de cada `scene.usd`, dimensionado
+por objeto; no guarda cámaras de captura persistentes.
+Si un USDZ trae una cámara propia, se desactiva bajo `/Object`; una cámara
+persistida fuera del objeto se considera una escena incompatible.
+La cámara `/OmniverseKit_Persp` que Isaac Sim crea para su viewport se
+desactiva y no se considera parte de la escena base.
 
 ## Preparación
 
@@ -40,9 +45,18 @@ explícitamente para reconstruir recursos; las escenas anteriores no se
 reutilizan silenciosamente.
 
 El cuarto mide 6 x 6 x 4 metros, tiene suelo en Z=0, cuatro paredes,
-textura procedural reproducible e iluminación fija. El objeto se centra
+textura procedural reproducible e iluminación fija dentro de `/Room`
+(una dome light y dos rect lights). El objeto se centra
 horizontalmente y se apoya en ese suelo. Si no cabe, la preparación o la
 captura termina con un error; no se escala ni se mueve el cuarto.
+
+La textura usada por el cuarto es la única imagen procedural
+`assets/environment/textures/generated_room.png` (2048×2048). Se aplica al
+suelo y a las cuatro paredes con transformaciones UV distintas y se registra
+su SHA-256 como `capture:textureSha256` en `/Room`. El cuarto usa paredes a
+`1.25 × distancia_de_órbita`, suelo justo debajo de la base del objeto, sin
+mesa ni techo, y conserva la iluminación legacy (Dome 400 y dos Rect 600,
+`normalize=False`).
 
 Después de preparar una escena:
 
@@ -50,6 +64,10 @@ Después de preparar una escena:
 /ruta/a/isaac-sim/python.sh src/capture/generate_rgbd_three_cameras.py
 /ruta/a/isaac-sim/python.sh src/capture/generate_orbit_room.py
 ```
+
+La órbita oficial usa 8 segundos a 30 FPS (240 frames), una sola vuelta,
+elevación lineal de 10° a 65° y FOV horizontal de 50°. El script imprime el
+paso azimutal nominal de 300 frames extraídos y avisa si supera 3°.
 
 Ambos comandos omiten resultados completos. RGBD no reemplaza resultados
 incompletos salvo que `SOBRESCRIBIR_RGBD = True`; la órbita aplica la misma
@@ -93,4 +111,3 @@ de activar ese modo.
 * **No marcar como basura:** `metadata/limites_objetos.json`, scripts de
   evaluación y resultados de reconstrucción; pueden ser entradas de otros
   flujos.
-

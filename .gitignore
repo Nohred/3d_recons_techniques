@@ -5,6 +5,9 @@ nerfstudio/
 torch_cache/
 pycache/
 .pycache/
+.recon.lock
+
 
 # 3D Models and assets
 3D_Models/reserved/
+data/
