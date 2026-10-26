@@ -1,0 +1,10 @@
+# nerfstudio
+nerfstudio/
+
+# PyTorch cache
+torch_cache/
+pycache/
+.pycache/
+
+# 3D Models and assets
+3D_Models/reserved/
