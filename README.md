@@ -111,3 +111,37 @@ de activar ese modo.
 * **No marcar como basura:** `metadata/limites_objetos.json`, scripts de
   evaluación y resultados de reconstrucción; pueden ser entradas de otros
   flujos.
+
+## Ground Truth y evaluación
+
+Generar el Ground Truth por cada objeto canónico:
+
+```bash
+/ruta/a/isaac-sim/python.sh src/ground_truth/usdz_to_plt.py
+```
+
+Cada resultado se escribe en `data/<object_id>/ground_truth/ground_truth.ply`.
+El script usa variables editables (`OBJETOS`, `PUNTOS_DESEADOS` y
+`SOBRESCRIBIR`) y no reemplaza un GT existente por defecto.
+
+Limpiar los exports de Splatfacto:
+
+```bash
+python src/evaluation/clean_reconstructions.py
+```
+
+Solo se procesa
+`reconstruction/exports/splatfacto/gaussian_centers_NOT_SURFACE.ply` y se
+genera `gaussian_centers_clean.ply` en la misma carpeta. Nerfacto queda
+preparado en el script, pero deshabilitado hasta que exista su limpiador
+específico.
+
+Registrar y evaluar:
+
+```bash
+python src/evaluation/run_evaluation.py
+```
+
+Se generan `reports/<object_id>.json` y `reports/summary.json`. El flujo
+registra traslación, rotación y escala antes de calcular Chamfer, RMSE,
+Hausdorff, precisión, recall, F-Score y PSNR geométrico.

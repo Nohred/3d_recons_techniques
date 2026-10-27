@@ -1,0 +1,16 @@
+{
+  "tipo": "ChArUco",
+  "casillas_x": 7,
+  "casillas_y": 5,
+  "diccionario": "DICT_4X4_50",
+  "relacion_marcador": 0.7,
+  "imagen_px": [
+    1600,
+    1200
+  ],
+  "px_por_casilla": 200,
+  "margen_px": 100,
+  "marco_tablero": "origen = esquina superior izquierda del area de casillas, X a la derecha, Y hacia abajo en la imagen, Z = X x Y (hacia dentro del tablero)",
+  "archivo": "charuco_7x5_4x4_50.png",
+  "sha256": "2c3ad9e771007542e7cc6c82f4570fc2850b23e5692768838808ea61a8eb255c"
+}

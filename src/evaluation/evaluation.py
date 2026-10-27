@@ -3,7 +3,10 @@ import open3d as o3d
 
 # Importamos la función que creamos en el paso anterior
 # (Asume que el archivo se llama registration.py)
-from registration import register_point_clouds
+try:
+    from .registration import register_point_clouds
+except ImportError:
+    from registration import register_point_clouds
 
 def compute_metrics(source_pcd, target_gt_pcd, fscore_threshold_ratio=0.01):
     """

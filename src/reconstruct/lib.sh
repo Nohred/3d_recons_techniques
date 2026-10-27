@@ -17,7 +17,7 @@ NERF_RAYS_PER_BATCH="${NERF_RAYS_PER_BATCH:-8192}"
 GCC_BIN="${GCC_BIN:-/usr/bin/gcc-11}"
 GXX_BIN="${GXX_BIN:-/usr/bin/g++-11}"
 MAX_JOBS_CUDA="${MAX_JOBS_CUDA:-4}"
-FORCE="${FORCE:-0}"                         # 1 = rehacer etapas ya terminadas
+FORCE="${FORCE:-1}"                         # 1 = rehacer etapas ya terminadas
 SKIP_EXPORT="${SKIP_EXPORT:-0}"             # 1 = solo entrenar
 DRY_RUN="${DRY_RUN:-0}"                     # 1 = solo mostrar que se haria
 # ==================================================================================================
@@ -161,6 +161,14 @@ stage_train() {  # objeto metodo(nerfacto|splatfacto) iteraciones
 }
 
 # ---------------------------------------------------------------- exportacion
+
+
+# Nuevas variables (opcionales). Ejemplo: NERF_BBOX_MIN="-0.3 -0.3 -0.3"
+: "${NERF_BBOX_MIN:=}"           # "x y z" en coords normalizadas de nerfstudio
+: "${NERF_BBOX_MAX:=}"
+: "${NERF_STD_RATIO:=2.0}"
+: "${NERF_REMOVE_OUTLIERS:=True}"
+
 stage_export_nerf() {  # objeto
   local obj="$1" rec="$DATA_DIR/$obj/reconstruction"
   local marker="$rec/.export_nerfacto.done" logfile="$rec/logs/export_nerfacto.log"
@@ -169,10 +177,21 @@ stage_export_nerf() {  # objeto
   local config out="$rec/exports/nerfacto"
   config="$(cat "$rec/.train_nerfacto.done")"
   rm -rf "$out"; rm -f "$marker"
+
+  local bbox_args=()
+  if [[ -n "$NERF_BBOX_MIN" && -n "$NERF_BBOX_MAX" ]]; then
+    # shellcheck disable=SC2206
+    bbox_args=(--use-bounding-box True
+               --bounding-box-min $NERF_BBOX_MIN
+               --bounding-box-max $NERF_BBOX_MAX)
+  fi
+
   run_logged "$logfile" ns pixi run ns-export pointcloud \
       --load-config "$config" --output-dir "$out" \
       --num-points "$NERF_EXPORT_POINTS" --normal-method open3d \
-      --remove-outliers False --num-rays-per-batch "$NERF_RAYS_PER_BATCH" \
+      --remove-outliers "$NERF_REMOVE_OUTLIERS" --std-ratio "$NERF_STD_RATIO" \
+      --num-rays-per-batch "$NERF_RAYS_PER_BATCH" \
+      "${bbox_args[@]}" \
       || { STAGE_DETAIL="ns-export fallo"; return 1; }
   [[ -s "$out/point_cloud.ply" ]] || { STAGE_DETAIL="falta point_cloud.ply"; return 1; }
   date -Is > "$marker"
