@@ -180,15 +180,15 @@ def capture(object_id: str, app, total: int, render_settings: dict) -> None:
     from PIL import Image
     from pxr import Gf, UsdGeom
 
-    from src.common.paths import orbit_output, scene_path
-    from src.common.scene_utils import (
+    from src.capture.common.paths import orbit_output, scene_path
+    from src.capture.common.scene_utils import (
         _bbox,
         camera_pose,
         framing_distance,
         is_runtime_camera_path,
         validate_scene_lighting,
     )
-    from src.common.room import (
+    from src.capture.common.room import (
         FACTOR_PARED,
         ROOM_DOME_INTENSITY,
         ROOM_LIGHT_INTENSITY,
@@ -384,7 +384,7 @@ def capture(object_id: str, app, total: int, render_settings: dict) -> None:
 def main() -> None:
     total = _validate()
     from isaacsim import SimulationApp
-    from src.common.paths import select_object_ids
+    from src.capture.common.paths import select_object_ids
 
     app = SimulationApp({"headless": not MOSTRAR_VENTANA, "renderer": "RayTracedLighting"})
     render_settings = _configure_render_settings()

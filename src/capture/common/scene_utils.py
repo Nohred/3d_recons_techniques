@@ -84,7 +84,7 @@ def create_scene(stage, model_path: Path, room_path: Path | None = None,
     object_info = add_object(stage, model_path)
     if distance is None:
         distance = framing_distance(object_info["radius"], 50.0, 1280, 720, 1.2)
-    from src.common.room import create_room
+    from src.capture.common.room import create_room
     object_info["room"] = create_room(
         stage, distance, object_info["dimensions"], object_info["floor_z"])
     return object_info

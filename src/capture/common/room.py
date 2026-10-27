@@ -15,7 +15,7 @@ ROOM_TEXTURE_NAME = "generated_room.png"
 
 
 def texture_path() -> Path:
-    from src.common.paths import SHARED_ASSETS_ROOT
+    from src.capture.common.paths import SHARED_ASSETS_ROOT
 
     return SHARED_ASSETS_ROOT / "environment" / "textures" / ROOM_TEXTURE_NAME
 

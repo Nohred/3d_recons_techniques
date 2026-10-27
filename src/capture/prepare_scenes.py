@@ -7,8 +7,8 @@ ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from src.common.paths import object_asset, scene_path, prepare_original, select_object_ids
-from src.common.scene_utils import create_scene
+from common.paths import object_asset, scene_path, prepare_original, select_object_ids
+from common.scene_utils import create_scene
 
 # ================= CONFIGURACION EDITABLE =================
 OBJETOS = None  # None: todos los USDZ; o, por ejemplo, ["mug_with_coffee"]

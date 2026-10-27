@@ -125,7 +125,7 @@ stage_process() {  # objeto
   export QT_QPA_PLATFORM=offscreen
   run_logged "$logfile" ns pixi run ns-process-data video \
       --data "$video" --output-dir "$proc" \
-      --num-frames-target "$NUM_FRAMES" --no-gpu || { STAGE_DETAIL="ns-process-data fallo"; return 1; }
+      --num-frames-target "$NUM_FRAMES" || { STAGE_DETAIL="ns-process-data fallo"; return 1; }
   STAGE_DETAIL="$(validate_processed "$proc" | tee -a "$logfile" | tr '\n' ' ')"
   validate_processed "$proc" >/dev/null || return 1
   date -Is > "$rec/.process.done"

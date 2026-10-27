@@ -3,3 +3,8 @@ timestamp,object,stage,status,seconds,detail
 2026-10-26T13:28:10-06:00,cola_can,process,failed,98,"camaras registradas=3 imagenes=300 Registro insuficiente (minimo 90%); no se entrena. "
 2026-10-26T14:25:13-06:00,cola_can,process,failed,779,"camaras registradas=2 imagenes=240 Registro insuficiente (minimo 90%); no se entrena. "
 2026-10-26T15:53:33-06:00,cola_can,process,failed,532,"camaras registradas=3 imagenes=240 Registro insuficiente (minimo 90%); no se entrena. "
+2026-10-27T08:54:17-06:00,sneaker,process,ok,539,"camaras registradas=240 imagenes=240 "
+2026-10-27T08:55:57-06:00,sneaker,train_nerfacto,ok,100,"iters=2000 config=/home/ccdatos/Escritorio/3D_reconstruction/data/sneaker/reconstruction/runs/sneaker/nerfacto/2026-10-27_085420/config.yml"
+2026-10-27T08:56:10-06:00,sneaker,export_nerfacto,ok,13,""
+2026-10-27T08:57:17-06:00,sneaker,train_splatfacto,ok,67,"iters=4000 config=/home/ccdatos/Escritorio/3D_reconstruction/data/sneaker/reconstruction/runs/sneaker/splatfacto/2026-10-27_085613/config.yml"
+2026-10-27T08:57:26-06:00,sneaker,export_splatfacto,ok,9,""

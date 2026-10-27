@@ -4,7 +4,7 @@ from pathlib import Path
 import shutil
 
 
-REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
+REPOSITORY_ROOT = Path(__file__).resolve().parents[3]
 MODELS_ROOT = REPOSITORY_ROOT / "3D_Models"
 DATA_ROOT = REPOSITORY_ROOT / "data"
 SHARED_ASSETS_ROOT = REPOSITORY_ROOT / "assets"
