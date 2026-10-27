@@ -12,7 +12,7 @@ from common.scene_utils import create_scene
 
 # ================= CONFIGURACION EDITABLE =================
 OBJETOS = None  # None: todos los USDZ; o, por ejemplo, ["mug_with_coffee"]
-REBUILD_SCENES = True
+REBUILD_SCENES = False
 MOSTRAR_VENTANA = False
 # ==========================================================
 

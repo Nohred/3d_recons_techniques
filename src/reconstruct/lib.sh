@@ -17,7 +17,7 @@ NERF_RAYS_PER_BATCH="${NERF_RAYS_PER_BATCH:-8192}"
 GCC_BIN="${GCC_BIN:-/usr/bin/gcc-11}"
 GXX_BIN="${GXX_BIN:-/usr/bin/g++-11}"
 MAX_JOBS_CUDA="${MAX_JOBS_CUDA:-4}"
-FORCE="${FORCE:-1}"                         # 1 = rehacer etapas ya terminadas
+FORCE="${FORCE:-0}"                         # 1 = rehacer etapas ya terminadas
 SKIP_EXPORT="${SKIP_EXPORT:-0}"             # 1 = solo entrenar
 DRY_RUN="${DRY_RUN:-0}"                     # 1 = solo mostrar que se haria
 # ==================================================================================================
