@@ -632,3 +632,4 @@ timestamp,object,stage,status,seconds,detail
 2026-11-06T00:30:48-06:00,ceramic_vase,photogrammetry,ok,4721,"fused=/home/ccdatos/Escritorio/3D_reconstruction/data/ceramic_vase/reconstruction/exports/photogrammetry/fused.ply"
 2026-11-06T01:49:29-06:00,chai_glass,photogrammetry,ok,4721,"fused=/home/ccdatos/Escritorio/3D_reconstruction/data/chai_glass/reconstruction/exports/photogrammetry/fused.ply"
 2026-11-06T03:08:09-06:00,cola_bottle,photogrammetry,ok,4720,"fused=/home/ccdatos/Escritorio/3D_reconstruction/data/cola_bottle/reconstruction/exports/photogrammetry/fused.ply"
+2026-11-17T15:05:30-06:00,sneaker,rgbd_fusion,ok,1,"puntos=150701 reproy_max=0.18px err_pose_max=0.9mm"

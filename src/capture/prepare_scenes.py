@@ -18,6 +18,9 @@ MOSTRAR_VENTANA = False
 
 
 def main() -> None:
+    global OBJETOS, REBUILD_SCENES
+    from src.cli_utils import parse_cli
+    OBJETOS, REBUILD_SCENES = parse_cli(OBJETOS, REBUILD_SCENES, __doc__)
     from isaacsim import SimulationApp
 
     app = SimulationApp({"headless": not MOSTRAR_VENTANA})

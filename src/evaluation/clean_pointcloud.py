@@ -1,3 +1,4 @@
+"""Limpieza genérica de nubes (3DGS, NeRF, COLMAP, RGBD): recorte esférico, suelo, DBSCAN y outliers."""
 import argparse
 import numpy as np
 import open3d as o3d

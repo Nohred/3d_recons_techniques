@@ -382,6 +382,11 @@ def capture(object_id: str, app, total: int, render_settings: dict) -> None:
 
 
 def main() -> None:
+    global OBJETOS, SOBRESCRIBIR_VIDEO, SALTAR_COMPLETOS
+    from src.cli_utils import parse_cli
+    OBJETOS, SOBRESCRIBIR_VIDEO = parse_cli(OBJETOS, SOBRESCRIBIR_VIDEO, __doc__)
+    if SOBRESCRIBIR_VIDEO:
+        SALTAR_COMPLETOS = False
     total = _validate()
     from isaacsim import SimulationApp
     from src.capture.common.paths import select_object_ids

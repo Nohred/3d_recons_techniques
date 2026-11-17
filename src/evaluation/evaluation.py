@@ -90,24 +90,15 @@ def print_report(metrics):
 
 
 if __name__ == "__main__":
-    # 1. Definir rutas (Hardcoded para tu pipeline actual)
-    source_path = "splat_clean.ply"
-    gt_path = "splat_clean_manual.ply"
-    
-    print(f"Cargando {source_path} y {gt_path}...")
-    source_pcd = o3d.io.read_point_cloud(source_path)
-    gt_pcd = o3d.io.read_point_cloud(gt_path)
-    
-    # 2. Alinear las nubes usando nuestro módulo anterior
-    # Esto garantiza que escala, rotación y traslación empaten antes de medir
-    aligned_source, icp_info = register_point_clouds(source_pcd, gt_pcd)
-    
-    # 3. Calcular las 5 métricas de la nube alineada contra el Ground Truth
-    # Pasamos 0.02 (2% del tamaño) como tolerancia razonable para el F-Score
-    metrics_result = compute_metrics(aligned_source, gt_pcd, fscore_threshold_ratio=0.02)
-    
-    # 4. Imprimir la tabla de resultados
-    print_report(metrics_result)
-    
-    # (Opcional) Guardar la nube alineada para inspección visual
-    o3d.io.write_point_cloud("splat_aligned.ply", aligned_source)
+    # Uso manual: python src/evaluation/evaluation.py reconstruccion.ply ground_truth.ply [--fscore 0.02]
+    import argparse
+
+    ap = argparse.ArgumentParser(description="Registra una nube contra un GT e imprime métricas.")
+    ap.add_argument("source")
+    ap.add_argument("gt")
+    ap.add_argument("--fscore", type=float, default=0.02, help="umbral F-score (fracción de la diagonal del GT)")
+    a = ap.parse_args()
+    source_pcd = o3d.io.read_point_cloud(a.source)
+    gt_pcd = o3d.io.read_point_cloud(a.gt)
+    aligned_source, _ = register_point_clouds(source_pcd, gt_pcd)
+    print_report(compute_metrics(aligned_source, gt_pcd, fscore_threshold_ratio=a.fscore))

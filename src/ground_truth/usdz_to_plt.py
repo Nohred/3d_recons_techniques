@@ -130,6 +130,9 @@ def convert_mesh_to_pointcloud(mesh_path: Path, ply_path: Path) -> None:
 
 
 async def main() -> None:
+    global OBJETOS, SOBRESCRIBIR
+    from src.cli_utils import parse_cli
+    OBJETOS, SOBRESCRIBIR = parse_cli(OBJETOS, SOBRESCRIBIR, __doc__)
     from isaacsim import SimulationApp
 
     app = SimulationApp({"headless": True})

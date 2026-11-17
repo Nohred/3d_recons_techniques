@@ -1,189 +1,149 @@
-# Flujo de captura
+# Reconstrucción 3D sintética: captura automatizada + comparación de técnicas
 
-El flujo activo prepara una escena por objeto y después ejecuta dos
-capturadores sobre esa misma escena:
+Pipeline que, para cada modelo USDZ de `3D_Models/`, genera una escena en Isaac Sim,
+captura datos sintéticos (video orbital, 3 vistas RGBD y calibración ChArUco), reconstruye
+el objeto con cuatro técnicas y las evalúa contra el Ground Truth del modelo.
+
+| Técnica          | Entrada              | Herramienta                              | Export                                   |
+|------------------|----------------------|------------------------------------------|------------------------------------------|
+| `nerfacto`       | `raw/orbit.mp4`      | nerfstudio (`ns-train nerfacto`)         | `exports/nerfacto/point_cloud.ply`       |
+| `splatfacto`     | `raw/orbit.mp4`      | nerfstudio (`ns-train splatfacto`)       | `exports/splatfacto/gaussian_centers_NOT_SURFACE.ply` |
+| `photogrammetry` | COLMAP de la órbita  | COLMAP denso (patch-match + fusion)      | `exports/photogrammetry/fused.ply`       |
+| `rgbd_fusion`    | `raw/rgbd/` + `raw/calibration/` | ChArUco + retroproyección (Open3D) | `exports/rgbd_fusion/fused.ply`      |
+
+## Requisitos
+
+- **Isaac Sim 5.x** (`~/isaacsim/python.sh`, o `ISAAC_PYTHON=...`): escenas, capturas, calibración y GT.
+- **nerfstudio** clonado en `nerfstudio/` con su entorno **pixi** (`pixi run ns-*`); gcc/g++-11 para compilar gsplat.
+- **COLMAP** con CUDA para fotogrametría (en `PATH` o en `COLMAP_BIN_DIR`, por defecto `~/miniconda3/envs/colmap_cuda/bin`).
+- **ffmpeg/ffprobe** (codificación de la órbita).
+- **python3** con `numpy open3d opencv-contrib-python plyfile pillow matplotlib` (fusión RGBD, limpieza, evaluación).
+
+## Uso rápido
+
+Todo pasa por `./run.sh <etapa> [objeto ...]`. Sin objetos se procesan todos los disponibles.
+Cada etapa **omite lo que ya existe**; `FORCE=1` lo rehace. `DRY_RUN=1` solo muestra qué haría.
+
+```bash
+./run.sh help                      # etapas y variables
+./run.sh status                    # tabla de avance por objeto (status --summary: totales)
+
+./run.sh all                       # pipeline completo para todos los objetos
+./run.sh all sneaker beach_ball    # ... o solo para algunos
+
+# Por partes
+./run.sh capture sneaker           # prepare + rgbd + orbit + calibration (Isaac Sim)
+./run.sh recon sneaker             # COLMAP + Nerfacto + Splatfacto (nerfstudio)
+./run.sh photogrammetry sneaker    # COLMAP denso (requiere recon/process previo)
+./run.sh rgbd-fusion sneaker       # fusión de las 3 vistas RGBD (segundos)
+./run.sh post sneaker              # gt + clean + evaluate
+
+# Opciones
+FORCE=1 ./run.sh orbit sneaker                      # regrabar la órbita
+METHODS=splatfacto,rgbd_fusion ./run.sh evaluate    # evaluar solo algunas técnicas
+NERF_ITERS=30000 SPLAT_ITERS=30000 ./run.sh recon   # más iteraciones
+MAX_OBJECTS=0 ./run.sh photogrammetry               # sin límite (por defecto 10 objetos)
+```
+
+Las etapas de captura y reconstrucción son largas (minutos a horas por objeto); `rgbd-fusion`,
+`clean` y `evaluate` tardan segundos. Un fallo en un objeto no detiene el lote: se registra y
+se continúa. Las etapas compuestas (`capture`, `post`, `all`) continúan con la siguiente etapa
+y reportan al final cuáles fallaron.
+
+### Etapas
+
+| Etapa            | Script                                                  | Salida (bajo `data/<obj>/`)                    |
+|------------------|---------------------------------------------------------|------------------------------------------------|
+| `prepare`        | `src/capture/prepare_scenes.py`                         | `assets/original.usdz`, `scene/scene.usd`      |
+| `rgbd`           | `src/capture/generate_rgbd_three_cameras.py`            | `raw/rgbd/camera_0{0,1,2}/{rgb.png,depth.npy}` |
+| `orbit`          | `src/capture/generate_orbit_room.py`                    | `raw/orbit.mp4`, `raw/orbit_report.json`       |
+| `calibration`    | `src/reconstruct/cameras/generate_calibration_views.py` | `raw/calibration/`, `simulation_private/calibration_ground_truth.json` |
+| `gt`             | `src/ground_truth/usdz_to_plt.py`                       | `ground_truth/ground_truth.ply`                |
+| `process`        | `src/reconstruct/recon_process.sh`                      | `reconstruction/processed/` (frames + COLMAP)  |
+| `nerf`/`splat`/`recon` | `src/reconstruct/recon_{nerf,splat,all}.sh`       | `reconstruction/runs/`, `reconstruction/exports/{nerfacto,splatfacto}/` |
+| `photogrammetry` | `src/reconstruct/recon_photogrammetry.sh`               | `reconstruction/exports/photogrammetry/`       |
+| `rgbd-fusion`    | `src/reconstruct/rgbd_fusion.py`                        | `reconstruction/exports/rgbd_fusion/{fused.ply,poses.json}` |
+| `clean`          | `src/evaluation/clean_reconstructions.py`               | `*_clean.ply` junto a cada export              |
+| `evaluate`       | `src/evaluation/run_evaluation.py`                      | `reports/evaluation/<obj>__<metodo>.json`, `summary.{json,csv}` |
+
+Los scripts Python también se pueden ejecutar directamente: aceptan `[objeto ...] [--overwrite]`
+(y `--methods a,b` los de limpieza/evaluación). Sus parámetros finos siguen en el bloque
+`CONFIGURACION EDITABLE` al inicio de cada archivo; la CLI solo sobrescribe objetos y sobrescritura.
+
+## Estructura de datos
 
 ```text
-data/<object_id>/
-├── assets/original.usdz
-├── scene/scene.usd
-└── raw/
-    ├── orbit.mp4
-    └── rgbd/camera_00/{rgb.png,depth.npy}
-       rgbd/camera_01/{rgb.png,depth.npy}
-       rgbd/camera_02/{rgb.png,depth.npy}
-assets/environment/
-├── room.usd                 # legado; ya no se referencia en escenas nuevas
-└── textures/generated_room.png
+3D_Models/<obj>.usdz                    # modelos fuente (3D_Models/reserved/ se ignora)
+data/<obj>/
+├── assets/original.usdz                # copia canónica (nunca se sobrescribe con otro modelo)
+├── scene/scene.usd                     # cuarto + luces + objeto
+├── raw/
+│   ├── orbit.mp4                       # 1280x720, 30 FPS, 8 s
+│   ├── rgbd/camera_0{0,1,2}/           # rgb.png + depth.npy
+│   └── calibration/                    # ChArUco en el piso, mismas 3 cámaras, sin objeto
+├── simulation_private/                 # verdad del simulador: SOLO para diagnóstico/evaluación
+├── ground_truth/ground_truth.ply
+└── reconstruction/
+    ├── processed/                      # frames + transforms.json + colmap/
+    ├── runs/                           # entrenamientos nerfstudio
+    ├── exports/<metodo>/               # nubes crudas y *_clean.ply
+    ├── logs/                           # un log por etapa
+    ├── stages.csv                      # historial de etapas del objeto
+    └── .process.done, .train_*.done, .export_*.done   # marcadores de etapa
+reports/
+├── reconstruction_summary.csv          # historial global de etapas
+├── colmap_report.csv                   # resultado de COLMAP del último lote
+└── evaluation/summary.{csv,json}       # comparación de técnicas
+cloud/<obj>/{nerfacto,splatfacto}/      # nubes de 5 objetos versionadas como referencia
 ```
 
-`src/capture/generate_orbit_room.py` es el capturador RGB oficial.
-`src/capture/legacy/generate_orbit.py` se conserva solamente como histórico.
-`generate_rgbd_three_cameras.py` produce tres vistas fijas a 120 grados.
-`prepare_scenes.py` genera el cuarto dentro de cada `scene.usd`, dimensionado
-por objeto; no guarda cámaras de captura persistentes.
-Si un USDZ trae una cámara propia, se desactiva bajo `/Object`; una cámara
-persistida fuera del objeto se considera una escena incompatible.
-La cámara `/OmniverseKit_Persp` que Isaac Sim crea para su viewport se
-desactiva y no se considera parte de la escena base.
+`data/`, `3D_Models/`, `reports/` y `nerfstudio/` están en `.gitignore`.
 
-## Preparación
+## Notas técnicas
 
-Ejecutar con el `python.sh` de Isaac Sim desde cualquier directorio:
+**Escena.** `prepare_scenes.py` genera por objeto un cuarto sin techo con paredes a
+`1.25 × distancia de órbita`, suelo bajo la base del objeto, textura procedural única
+(`assets/environment/textures/generated_room.png`, SHA-256 registrado en `/Room`) e iluminación
+fija (Dome 400 + dos Rect 600, `normalize=False`). El objeto se centra y se apoya en el suelo;
+si no cabe, la etapa falla (no se escala). Cámaras propias del USDZ se desactivan.
 
-```bash
-cd /home/ccdatos/Escritorio/3D_reconstruction
-/ruta/a/isaac-sim/python.sh src/capture/prepare_scenes.py
-```
+**Órbita.** 240 frames (8 s a 30 FPS), una vuelta, elevación lineal 10°→65°, FOV horizontal 50°.
+nerfstudio extrae `NUM_FRAMES=300` imágenes; COLMAP debe registrar ≥ `MIN_REGISTERED_FRACTION`
+(0.90) de ellas o no se entrena.
 
-Las variables editables están al principio de cada script. `OBJETOS = None`
-descubre los USDZ bajo `3D_Models`; también se puede elegir, por ejemplo,
-`OBJETOS = ["mug_with_coffee"]`. La preparación copia cada modelo una sola
-vez a `data/<object_id>/assets/original.usdz` y rechaza sobrescribir un
-original diferente. `REBUILD_ROOM` y `REBUILD_SCENES` deben activarse
-explícitamente para reconstruir recursos; las escenas anteriores no se
-reutilizan silenciosamente.
+**RGBD.** Tres cámaras a 0/120/240° de azimut y 25° de elevación. Modo `IDEAL` (por defecto):
+`depth.npy` es `float32 (720, 1280)`, metros al plano de imagen, `0.0` = inválido; pinhole y RGB
+co-localizado. `REALSENSE_D455` es opcional, nunca fallback, y no está verificado en esta instalación.
 
-El cuarto mide 6 x 6 x 4 metros, tiene suelo en Z=0, cuatro paredes,
-textura procedural reproducible e iluminación fija dentro de `/Room`
-(una dome light y dos rect lights). El objeto se centra
-horizontalmente y se apoya en ese suelo. Si no cabe, la preparación o la
-captura termina con un error; no se escala ni se mueve el cuarto.
+**Calibración.** El tablero ChArUco 7×5 (`DICT_4X4_50`, `assets/calibration/`) se coloca en el piso
+bajo el objeto, que se desactiva solo en la sesión; se renderiza con las mismas cámaras RGBD.
+`calibration_inputs.json` contiene lo que conocería un usuario real (K, tablero); la verdad del
+simulador queda en `simulation_private/`.
 
-La textura usada por el cuarto es la única imagen procedural
-`assets/environment/textures/generated_room.png` (2048×2048). Se aplica al
-suelo y a las cuatro paredes con transformaciones UV distintas y se registra
-su SHA-256 como `capture:textureSha256` en `/Room`. El cuarto usa paredes a
-`1.25 × distancia_de_órbita`, suelo justo debajo de la base del objeto, sin
-mesa ni techo, y conserva la iluminación legacy (Dome 400 y dos Rect 600,
-`normalize=False`).
+**Fusión RGBD.** Estima la pose de cada cámara respecto al tablero con `solvePnP`, retroproyecta
+las tres profundidades al marco del tablero, recorta el suelo (plano del tablero) y una esfera
+alrededor del punto donde convergen los ejes ópticos (radio deducido del encuadre). `poses.json`
+reporta reproyección y error contra la pose del simulador (≈1 mm en `sneaker`).
 
-Después de preparar una escena:
+**Fotogrametría.** `image_undistorter` → `patch_match_stereo` (consistencia geométrica) →
+`stereo_fusion` sobre `processed/colmap/sparse/0`. `MAX_IMAGE_SIZE=1300`. Solo considera objetos
+con COLMAP completo; por defecto procesa como máximo `MAX_OBJECTS=10` por ejecución.
 
-```bash
-/ruta/a/isaac-sim/python.sh src/capture/generate_rgbd_three_cameras.py
-/ruta/a/isaac-sim/python.sh src/capture/generate_orbit_room.py
-```
+**Limpieza y evaluación.** `src/evaluation/clean_pointcloud.py` (recorte esférico alrededor de la
+mediana, eliminación del plano del suelo, DBSCAN de la isla mayor, filtro estadístico) con
+parámetros por técnica en `src/evaluation/methods.py`. La evaluación registra traslación, rotación
+y escala (FPFH + RANSAC + ICP con escala) y calcula Chamfer, RMSE, Hausdorff, precisión, recall,
+F-score (umbral 2 % de la diagonal del GT) y PSNR geométrico. Uso manual sobre dos nubes:
+`python3 src/evaluation/evaluation.py reconstruccion.ply gt.ply`.
 
-La órbita oficial usa 8 segundos a 30 FPS (240 frames), una sola vuelta,
-elevación lineal de 10° a 65° y FOV horizontal de 50°. El script imprime el
-paso azimutal nominal de 300 frames extraídos y avisa si supera 3°.
+## Utilidades
 
-Ambos comandos omiten resultados completos. RGBD no reemplaza resultados
-incompletos salvo que `SOBRESCRIBIR_RGBD = True`; la órbita aplica la misma
-política con `SOBRESCRIBIR_VIDEO = True`. No se escriben los protocolos
-antiguos `data/raw/<protocolo>/...`, reportes de cámara ni `cameras.json`.
+- `python3 scripts/view_rgbd.py <obj>` — muestra las 3 vistas RGB y su profundidad.
+- `python3 src/evaluation/clean_pointcloud.py in.ply [out.ply] --crop-ratio ...` — limpieza manual con parámetros a mano.
+- `~/isaacsim/python.sh src/capture/inspect_models.py` — reporte de dimensiones de los USDZ.
 
-## Profundidad
+## Pendientes conocidos
 
-El modo predeterminado es `IDEAL`: `depth.npy` es `float32`, forma
-`(ALTO, ANCHO)`, metros de distancia al plano de imagen, y `0.0` significa
-inválido/no observado. No se normaliza por imagen. `REALSENSE_D455` es una
-opción explícita separada y nunca es fallback automático. Requiere que la
-instalación activa exponga `SingleViewDepthSensorAsset` y
-`DepthSensorDistance`, además del asset `rsd455.usd`; el script falla si la
-salida registrada RGB-depth no está verificada. La simplificación documentada
-para el modo ideal es pinhole, RGB co-localizado y profundidad perfecta, no un
-sensor RealSense.
-
-El código fue escrito contra las APIs de Isaac Sim 5.1 mencionadas por los
-scripts originales. Este entorno de trabajo no contiene `python.sh` ni una
-instalación Isaac Sim ejecutable, por lo que la versión efectiva y la firma
-exacta del backend RealSense deben comprobarse en la instalación local antes
-de activar ese modo.
-
-## Inventario, sin limpieza destructiva
-
-* **Conservar:** `3D_Models/`, `data/raw/orbita/` y
-  `data/raw/orbita_room_test_v1/`; contienen USDZ y videos históricos que no
-  se sobrescriben.
-* **Archivar posteriormente:** `simulation_private/orbita/` y
-  `simulation_private/orbita_room_test_v1/`; contienen reportes, previews,
-  texturas y escenas antiguas por objeto. Son regenerables, pero sirven para
-  reproducir resultados anteriores.
-* **Migrar explícitamente:** USDZ seleccionados hacia
-  `data/<object_id>/assets/` y escenas nuevas hacia
-  `data/<object_id>/scene/`; la preparación es idempotente y no borra los
-  originales.
-* **Candidatos a eliminar con aprobación:** `data/_work/` y sus frames
-  temporales, previews y cachés `__pycache__`. Son regenerables, pero los
-  primeros pueden ser evidencia de ejecuciones antiguas.
-* **No marcar como basura:** `metadata/limites_objetos.json`, scripts de
-  evaluación y resultados de reconstrucción; pueden ser entradas de otros
-  flujos.
-
-## Ground Truth y evaluación
-
-Generar el Ground Truth por cada objeto canónico:
-
-```bash
-/ruta/a/isaac-sim/python.sh src/ground_truth/usdz_to_plt.py
-```
-
-Cada resultado se escribe en `data/<object_id>/ground_truth/ground_truth.ply`.
-El script usa variables editables (`OBJETOS`, `PUNTOS_DESEADOS` y
-`SOBRESCRIBIR`) y no reemplaza un GT existente por defecto.
-
-Limpiar los exports de Splatfacto:
-
-```bash
-python src/evaluation/clean_reconstructions.py
-```
-
-Solo se procesa
-`reconstruction/exports/splatfacto/gaussian_centers_NOT_SURFACE.ply` y se
-genera `gaussian_centers_clean.ply` en la misma carpeta. Nerfacto queda
-preparado en el script, pero deshabilitado hasta que exista su limpiador
-específico.
-
-Registrar y evaluar:
-
-```bash
-python src/evaluation/run_evaluation.py
-```
-
-Se generan `reports/<object_id>.json` y `reports/summary.json`. El flujo
-registra traslación, rotación y escala antes de calcular Chamfer, RMSE,
-Hausdorff, precisión, recall, F-Score y PSNR geométrico.
-
-## Export de fotogrametría con COLMAP
-
-La fotogrametría densa es un flujo independiente de `recon_all.sh`:
-
-```bash
-src/reconstruct/recon_photogrammetry.sh
-```
-
-También acepta objetos concretos:
-
-```bash
-src/reconstruct/recon_photogrammetry.sh sneaker beach_ball
-```
-
-Sin argumentos, ordena los candidatos lexicográficamente. Para limitar la
-cantidad procesada:
-
-```bash
-MAX_OBJECTS=3 src/reconstruct/recon_photogrammetry.sh
-```
-
-Solo se consideran objetos con:
-
-```text
-data/<object_id>/reconstruction/processed/images/
-data/<object_id>/reconstruction/processed/colmap/sparse/0/
-```
-
-La salida queda en:
-
-```text
-data/<object_id>/reconstruction/exports/photogrammetry/
-├── dense/
-└── fused.ply
-```
-
-Un `fused.ply` existente y no vacío se omite. La etapa usa
-`image_undistorter`, `patch_match_stereo` con consistencia geométrica y
-`stereo_fusion`. `MAX_IMAGE_SIZE` vale 1300 por defecto.
-`FORCE_PHOTOGRAMMETRY=1` permite rehacer un export explícitamente. Los objetos
-sin COLMAP completo se omiten y no se incorporan a `recon_all.sh`.
+- Los parámetros de limpieza de `nerfacto` y `photogrammetry` son los genéricos de Splatfacto; falta ajustarlos.
+- 4 objetos (`cricket_ball fork iphone old_spoon`) no pasan COLMAP (`reports/failed.txt`).
+- El backend RealSense D455 no está integrado.

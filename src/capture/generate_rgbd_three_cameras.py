@@ -779,6 +779,11 @@ def capture_realsense(object_id: str, app) -> None:
 
 
 def main() -> None:
+    global OBJETOS, SOBRESCRIBIR_RGBD, SALTAR_COMPLETOS
+    from src.cli_utils import parse_cli
+    OBJETOS, SOBRESCRIBIR_RGBD = parse_cli(OBJETOS, SOBRESCRIBIR_RGBD, __doc__)
+    if SOBRESCRIBIR_RGBD:
+        SALTAR_COMPLETOS = False
     _validate_config()
     from isaacsim import SimulationApp
     from src.capture.common.paths import select_object_ids
@@ -799,5 +804,4 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    
     main()

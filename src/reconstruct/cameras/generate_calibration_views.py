@@ -56,7 +56,7 @@ PASOS_CALENTAMIENTO = 40
 PASOS_CAPTURA = 8
 ANTI_ALIASING_OP = 2               # /rtx/post/aa/op: 0 Off, 2 FXAA, 3 DLSS, 4 DLAA; None = no tocar
 APAGAR_AUTOEXPOSICION = True       # /rtx/post/histogram/enabled = False
-SOBRESCRIBIR = True
+SOBRESCRIBIR = False
 # ==========================================================
 
 
@@ -229,8 +229,9 @@ def capturar(object_id: str, app) -> None:
     obj_dir = raw_dir.parent
     destino = raw_dir / "calibration"
     privado = obj_dir / "simulation_private"
-    if destino.exists() and not SOBRESCRIBIR:
-        raise RuntimeError(f"Ya existe {destino}; activa SOBRESCRIBIR.")
+    if (destino / "calibration_inputs.json").is_file() and not SOBRESCRIBIR:
+        print(f"OMITIDO (calibracion existente): {destino}")
+        return
     escena = scene_path(object_id)
     if not escena.is_file():
         raise RuntimeError(f"Falta {escena}. Ejecuta prepare_scenes.py.")
@@ -424,6 +425,9 @@ def capturar(object_id: str, app) -> None:
 
 
 def main() -> None:
+    global OBJETOS, SOBRESCRIBIR
+    from src.cli_utils import parse_cli
+    OBJETOS, SOBRESCRIBIR = parse_cli(OBJETOS, SOBRESCRIBIR, __doc__)
     _validar_config()
     from isaacsim import SimulationApp
     from src.capture.common.paths import select_object_ids

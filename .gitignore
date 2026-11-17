@@ -3,8 +3,8 @@ nerfstudio/
 
 # PyTorch cache
 torch_cache/
-pycache/
-.pycache/
+__pycache__/
+*.pyc
 .recon.lock
 
 

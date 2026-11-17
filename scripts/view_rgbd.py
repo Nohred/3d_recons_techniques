@@ -1,12 +1,19 @@
+"""Visualiza las 3 vistas RGB + profundidad de un objeto. Uso: python3 scripts/view_rgbd.py <objeto>"""
 from pathlib import Path
 import hashlib
+import sys
+
+import matplotlib.pyplot as plt
 import numpy as np
 from PIL import Image
-import matplotlib
-import matplotlib.pyplot as plt
 
-OBJETO = "sneaker"
-base = Path.home() / "Escritorio/3D_reconstruction/data" / OBJETO / "raw/rgbd"
+ROOT = Path(__file__).resolve().parents[1]
+
+if len(sys.argv) != 2:
+    raise SystemExit(__doc__)
+base = ROOT / "data" / sys.argv[1] / "raw" / "rgbd"
+if not base.is_dir():
+    raise SystemExit(f"No existe {base}")
 
 fig, axes = plt.subplots(2, 3, figsize=(15, 7))
 for i in range(3):
@@ -18,9 +25,7 @@ for i in range(3):
           f"hash_depth={hashlib.sha256(d.tobytes()).hexdigest()[:12]}")
     axes[0, i].imshow(rgb)
     axes[0, i].set_title(f"camera_{i:02d} RGB")
-    # Mostrar la profundidad en escala de grises, como en RealSense.
-    depth = np.where(valid, d, np.nan)
-    im = axes[1, i].imshow(depth, cmap="gray")
+    im = axes[1, i].imshow(np.where(valid, d, np.nan), cmap="gray")
     axes[1, i].set_title(f"depth {valid.mean():.1%} válido")
     fig.colorbar(im, ax=axes[1, i], fraction=0.046)
     for r in (0, 1):
