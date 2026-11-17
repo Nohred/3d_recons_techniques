@@ -14,7 +14,7 @@ from isaacsim import SimulationApp
 
 CARPETA_MODELOS = ROOT / "3D_Models"
 
-CARPETA_SALIDA = ROOT / "metadata"
+CARPETA_SALIDA = ROOT / "reports"
 
 MOSTRAR_VENTANA = False
 

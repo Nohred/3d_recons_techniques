@@ -145,3 +145,45 @@ python src/evaluation/run_evaluation.py
 Se generan `reports/<object_id>.json` y `reports/summary.json`. El flujo
 registra traslación, rotación y escala antes de calcular Chamfer, RMSE,
 Hausdorff, precisión, recall, F-Score y PSNR geométrico.
+
+## Export de fotogrametría con COLMAP
+
+La fotogrametría densa es un flujo independiente de `recon_all.sh`:
+
+```bash
+src/reconstruct/recon_photogrammetry.sh
+```
+
+También acepta objetos concretos:
+
+```bash
+src/reconstruct/recon_photogrammetry.sh sneaker beach_ball
+```
+
+Sin argumentos, ordena los candidatos lexicográficamente. Para limitar la
+cantidad procesada:
+
+```bash
+MAX_OBJECTS=3 src/reconstruct/recon_photogrammetry.sh
+```
+
+Solo se consideran objetos con:
+
+```text
+data/<object_id>/reconstruction/processed/images/
+data/<object_id>/reconstruction/processed/colmap/sparse/0/
+```
+
+La salida queda en:
+
+```text
+data/<object_id>/reconstruction/exports/photogrammetry/
+├── dense/
+└── fused.ply
+```
+
+Un `fused.ply` existente y no vacío se omite. La etapa usa
+`image_undistorter`, `patch_match_stereo` con consistencia geométrica y
+`stereo_fusion`. `MAX_IMAGE_SIZE` vale 1300 por defecto.
+`FORCE_PHOTOGRAMMETRY=1` permite rehacer un export explícitamente. Los objetos
+sin COLMAP completo se omiten y no se incorporan a `recon_all.sh`.

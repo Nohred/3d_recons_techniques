@@ -21,7 +21,7 @@ for ruta in (ROOT, Path(__file__).resolve().parent):
         sys.path.insert(0, str(ruta))
 
 # ================= CONFIGURACION EDITABLE =================
-OBJETOS = ["sneaker"]          # None: todos los USDZ (cada uno necesita data/<obj>/scene/scene.usd)
+OBJETOS = None         # None: todos los USDZ (cada uno necesita data/<obj>/scene/scene.usd)
 MOSTRAR_VENTANA = False
 
 # --- DEBEN COINCIDIR con generate_rgbd_three_cameras.py (camaras identicas) ---
